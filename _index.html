@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LINE Notify Demo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+</head>
+<body>
+  <input type="text" id="message" placeholder="Your message here..." />
+  <button id="notifyButton">Notify</button>
+
+  <script>
+    document.getElementById('notifyButton').addEventListener('click', async () => {
+      const message = document.getElementById('message').value;
+      const response = await axios.post('http://localhost:3000/notify', message);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Transfer Learning - TensorFlow.js</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+  <style>
+    .bar-container {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .bar-label {
+      width: 120px;
+    }
+
+    .bar {
+      height: 20px;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+<h1>Make your own "Teachable Machine" using Transfer Learning with MobileNet v3 in TensorFlow.js using saved graph model from TFHub.</h1>
+
+<button type="button" onclick="init()">Start</button>
+<div id="webcam-container"></div>
+<div id="label-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<script type="text/javascript">
+  const URL = "https://teachablemachine.withgoogle.com/models/CQNlr4D8z/";
+  let model, webcam, labelContainer, maxPredictions;
+
+  const colors = ["#2196f3", "#f44336", "#4caf50", "#ffeb3b", "#9c27b0", "#3f51b5", "#00bcd4", "#e91e63", "#8bc34a", "#cddc39"];  // Define an array of colors
+
+  async function init() {
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
+
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+
+    const flip = true;
+    webcam = new tmImage.Webcam(200, 200, flip);
+    await webcam.setup();
+    await webcam.play();
+    window.requestAnimationFrame(loop);
+
+    document.getElementById("webcam-container").appendChild(webcam.canvas);
+    labelContainer = document.getElementById("label-container");
+    for (let i = 0; i < maxPredictions; i++) {
+      const barContainer = document.createElement("div");
+      barContainer.className = "bar-container";
+
+      const label = document.createElement("div");
+      label.className = "bar-label";
+      label.innerText = model.getClassLabels()[i];
+      barContainer.appendChild(label);
+
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      bar.style.width = "0%";
+      bar.style.backgroundColor = colors[i % colors.length];  // Set the color dynamically from the colors array
+      barContainer.appendChild(bar);
+
+      labelContainer.appendChild(barContainer);
+    }
+  }
+
+  async function loop() {
+    webcam.update();
+    await predict();
+    window.requestAnimationFrame(loop);
+  }
+
+  async function predict() {
+    const prediction = await model.predict(webcam.canvas);
+    for (let i = 0; i < maxPredictions; i++) {
+      const classLabel = model.getClassLabels()[i];
+      const probability = prediction[i].probability.toFixed(2);
+      const bar = labelContainer.childNodes[i].querySelector(".bar");
+      bar.style.width = `${probability * 100}%`;
+      bar.innerText = `${(probability * 100).toFixed(0)}%`;
+
+      // If the probability is high enough and the class is not 'background', send a notification.
+      if (probability > 0.75 && classLabel !== 'background') {
+        notify(classLabel);
+      }
+    }
+  }
+
+  async function notify(classLabel) {
+    const response = await axios.post('http://localhost:3000/notify', classLabel);
+    console.log(response.data);
+  }
+</script>
+</body>
+</html>
